@@ -21,7 +21,7 @@
         border-radius: 12px;
         padding: 16px 18px;
         margin-top: 18px;
-        background: color-mix(in oklab, Canvas 92%, CanvasText 0%);
+        background: #fafafa;
       }
       a.button {
         display: inline-block;
@@ -41,18 +41,63 @@
       }
       code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
       ul { margin: 0.5rem 0 0 1.1rem; }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #d1d5db;
+        margin-top: 8px;
+        font-size: 0.95rem;
+      }
     </style>
+    <script>
+      // If you deployed the FastAPI service publicly, jump straight to it:
+      //   https://<user>.github.io/CurrencyExchange/?api=https://your-api-host
+      (function () {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var api = params.get("api");
+          if (!api) return;
+          api = String(api).trim().replace(/\/+$/, "");
+          if (!/^https?:\/\//i.test(api)) return;
+          window.location.replace(api + "/");
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <h1>CurrencyExchange</h1>
     <p><strong>Iran FX Watch</strong> — tracks the Iranian rial (IRR) against major currencies, compares <strong>official (CBI)</strong> vs <strong>market (Bonbast)</strong>, and surfaces alerts.</p>
 
     <div class="card">
-      <p><strong>You are on the static project page</strong> (GitHub Pages / hosted HTML). The live charts and API run as a Docker stack, not inside this file.</p>
-      <ul>
-        <li><strong>Source code</strong> is on GitHub in this repository.</li>
-        <li><strong>Dashboard</strong> is the FastAPI app at <code>/</code> when you run <code>docker compose up</code> or deploy the compose stack to Railway / Render / Fly.io.</li>
-      </ul>
+      <p><strong>This GitHub Pages site is only a landing page.</strong> GitHub cannot run your database, ingest worker, or FastAPI server. That is expected.</p>
+      <p><strong>The real dashboard</strong> is the <code>api</code> service at <code>/</code> after you run Docker locally or deploy the stack (Railway / Render / Fly.io).</p>
+    </div>
+
+    <div class="card">
+      <p><strong>Jump to your deployed API (optional)</strong></p>
+      <p class="muted" style="color:#6b7280;margin-top:0;">Paste the public base URL of your deployed API (must start with <code>http://</code> or <code>https://</code>), then press Enter.</p>
+      <input id="api" placeholder="https://your-api-host.example" />
+      <script>
+        document.getElementById("api").addEventListener("keydown", function (e) {
+          if (e.key !== "Enter") return;
+          var v = String(e.target.value || "").trim().replace(/\/+$/, "");
+          if (!/^https?:\/\//i.test(v)) return;
+          window.location.href =
+            window.location.pathname +
+            "?api=" +
+            encodeURIComponent(v);
+        });
+      </script>
+      <p style="margin-top:12px;color:#6b7280;font-size:0.95rem;">
+        Example bookmark:
+        <code>?api=https://YOUR-RAILWAY-OR-RENDER-URL</code>
+      </p>
+    </div>
+
+    <div class="card">
+      <p><strong>Links</strong></p>
       <a class="button" href="https://github.com/rhs8/CurrencyExchange">View repository</a>
       <a class="button secondary" href="https://github.com/rhs8/CurrencyExchange#quickstart">Quickstart (Docker)</a>
     </div>
