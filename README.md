@@ -1,5 +1,7 @@
 ## Iran FX Watch (Official vs Market)
 
+> **If you “published” this repo and only see documentation:** GitHub Pages (and similar) show the repo’s web root. This project’s **interactive dashboard** is the **FastAPI** app served by the **`api`** container (for example `http://localhost:8000` when you run Docker Compose). A static landing page lives at **`index.html`** in the repo root so your published site is not just a raw README dump.
+
 A small system that tracks the Iranian rial (**IRR**) against major currencies in near real time, comparing **official** (CBI) vs **market** (Bonbast) and alerting on unusual moves and spread changes.
 
 ### What runs locally

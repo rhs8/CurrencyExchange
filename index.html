@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CurrencyExchange — Iran FX Watch</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 32px 20px 48px;
+        line-height: 1.55;
+        max-width: 720px;
+        margin-inline: auto;
+      }
+      h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
+      p { margin: 0.75rem 0; color: #374151; }
+      .card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin-top: 18px;
+        background: color-mix(in oklab, Canvas 92%, CanvasText 0%);
+      }
+      a.button {
+        display: inline-block;
+        margin-top: 10px;
+        margin-right: 10px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        text-decoration: none;
+        border: 1px solid #111827;
+        color: #111827;
+        font-weight: 600;
+      }
+      a.button.secondary {
+        border-color: #9ca3af;
+        color: #111827;
+        font-weight: 600;
+      }
+      code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+      ul { margin: 0.5rem 0 0 1.1rem; }
+    </style>
+  </head>
+  <body>
+    <h1>CurrencyExchange</h1>
+    <p><strong>Iran FX Watch</strong> — tracks the Iranian rial (IRR) against major currencies, compares <strong>official (CBI)</strong> vs <strong>market (Bonbast)</strong>, and surfaces alerts.</p>
+
+    <div class="card">
+      <p><strong>You are on the static project page</strong> (GitHub Pages / hosted HTML). The live charts and API run as a Docker stack, not inside this file.</p>
+      <ul>
+        <li><strong>Source code</strong> is on GitHub in this repository.</li>
+        <li><strong>Dashboard</strong> is the FastAPI app at <code>/</code> when you run <code>docker compose up</code> or deploy the compose stack to Railway / Render / Fly.io.</li>
+      </ul>
+      <a class="button" href="https://github.com/rhs8/CurrencyExchange">View repository</a>
+      <a class="button secondary" href="https://github.com/rhs8/CurrencyExchange#quickstart">Quickstart (Docker)</a>
+    </div>
+
+    <div class="card">
+      <p><strong>Run locally</strong></p>
+      <pre style="overflow:auto; background:#0b1020; color:#e5e7eb; padding:12px 14px; border-radius:10px; font-size:0.85rem;">git clone https://github.com/rhs8/CurrencyExchange.git
+cd CurrencyExchange
+docker compose up -d --build
+# then open http://localhost:8000</pre>
+    </div>
+  </body>
+</html>
