@@ -2,23 +2,54 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import psycopg
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse
 
+from .auth_routes import router as auth_router
+from .journal_routes import router as journal_router
+
 
 def conn() -> psycopg.Connection:
     return psycopg.connect(os.environ["DATABASE_URL"])
 
 
+def _ensure_user_tables() -> None:
+    """Apply journal/auth schema on older DB volumes (init scripts only run on first PG init)."""
+    p = Path("/app/db_init/002_users_journal.sql")
+    if not p.exists():
+        return
+    sql = p.read_text(encoding="utf-8")
+    with conn() as c, c.cursor() as cur:
+        for stmt in (s.strip() for s in sql.split(";")):
+            if not stmt or stmt.startswith("--"):
+                continue
+            cur.execute(stmt + ";")
+        c.commit()
+
+
 app = FastAPI(title="Iran FX Watch", version="0.1.0")
+app.include_router(auth_router)
+app.include_router(journal_router)
+
+
+@app.on_event("startup")
+def _startup() -> None:
+    _ensure_user_tables()
 
 
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/app", response_class=HTMLResponse)
+def app_page() -> str:
+    p = Path(__file__).resolve().parent / "static" / "app.html"
+    return p.read_text(encoding="utf-8")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -39,6 +70,7 @@ def home() -> str:
         </style>
       </head>
       <body>
+        <p><a href="/app"><b>My exchange log</b> (account + history)</a></p>
         <h2>Iran FX Watch</h2>
         <p class="muted">
           Tracks <b>official</b> vs <b>market</b> IRR rates and alerts on spikes/spread.
@@ -221,16 +253,27 @@ def alerts(
     quote_ccy: str | None = Query(None),
     limit: int = Query(100, ge=1, le=2000),
 ) -> dict[str, Any]:
-    sql = """
-    SELECT ts, rule_id, severity, tier, source, base_ccy, quote_ccy, message, context
-    FROM alerts
-    WHERE base_ccy=%(base)s
-      AND (%(quote)s IS NULL OR quote_ccy=%(quote)s)
-    ORDER BY ts DESC
-    LIMIT %(limit)s
-    """
+    if quote_ccy is None:
+        sql = """
+        SELECT ts, rule_id, severity, tier, source, base_ccy, quote_ccy, message, context
+        FROM alerts
+        WHERE base_ccy=%(base)s
+        ORDER BY ts DESC
+        LIMIT %(limit)s
+        """
+        params: dict[str, Any] = {"base": base_ccy, "limit": limit}
+    else:
+        sql = """
+        SELECT ts, rule_id, severity, tier, source, base_ccy, quote_ccy, message, context
+        FROM alerts
+        WHERE base_ccy=%(base)s AND quote_ccy=%(quote)s
+        ORDER BY ts DESC
+        LIMIT %(limit)s
+        """
+        params = {"base": base_ccy, "quote": quote_ccy, "limit": limit}
+
     with conn() as c, c.cursor() as cur:
-        cur.execute(sql, {"base": base_ccy, "quote": quote_ccy, "limit": limit})
+        cur.execute(sql, params)
         rows = cur.fetchall()
     return {
         "base_ccy": base_ccy,

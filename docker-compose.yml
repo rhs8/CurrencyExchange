@@ -40,9 +40,12 @@ services:
 
   api:
     build:
-      context: ./services/api
+      context: .
+      dockerfile: services/api/Dockerfile
     environment:
       DATABASE_URL: postgresql://iranx:iranx@db:5432/iranx
+      JWT_SECRET: "dev-only-change-me-please-use-a-long-random-secret-in-production"
+      COOKIE_SECURE: "false"
     depends_on:
       db:
         condition: service_healthy

@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My exchanges — Iran FX Watch</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, -apple-system; margin: 24px; color: #111827; max-width: 980px; margin-inline: auto; }
+      a { color: #2563eb; }
+      .row { display: flex; gap: 16px; flex-wrap: wrap; }
+      .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; background: #fff; flex: 1; min-width: 280px; }
+      label { display: block; font-size: 0.85rem; color: #374151; margin-top: 10px; }
+      input, textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid #d1d5db; }
+      button { margin-top: 12px; padding: 8px 12px; border-radius: 8px; border: 1px solid #111827; background: #111827; color: #fff; cursor: pointer; }
+      button.secondary { background: #fff; color: #111827; }
+      table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.92rem; }
+      th, td { border-bottom: 1px solid #e5e7eb; padding: 8px 6px; text-align: left; vertical-align: top; }
+      .muted { color: #6b7280; font-size: 0.9rem; }
+      .err { color: #b91c1c; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <p><a href="/">← Rates dashboard</a></p>
+    <h2>My exchanges</h2>
+    <p class="muted">Log each conversion you did: time, currencies, amounts, optional rate/notes. Data is tied to your account.</p>
+
+    <div id="auth" class="row">
+      <div class="card">
+        <h3>Create account</h3>
+        <label>Email</label>
+        <input id="reg_email" type="email" autocomplete="email" />
+        <label>Password (min 8)</label>
+        <input id="reg_pw" type="password" autocomplete="new-password" />
+        <button onclick="register()">Register</button>
+        <div id="reg_err" class="err"></div>
+      </div>
+      <div class="card">
+        <h3>Sign in</h3>
+        <label>Email</label>
+        <input id="in_email" type="email" autocomplete="email" />
+        <label>Password</label>
+        <input id="in_pw" type="password" autocomplete="current-password" />
+        <button onclick="login()">Sign in</button>
+        <button class="secondary" onclick="logout()">Sign out</button>
+        <div id="in_err" class="err"></div>
+      </div>
+    </div>
+
+    <div id="me" class="card" style="display:none;">
+      <div><b>Signed in as</b> <span id="me_email"></span></div>
+    </div>
+
+    <div id="journal" class="card" style="display:none; margin-top: 16px;">
+      <h3>Add an exchange</h3>
+      <div class="row">
+        <div style="flex:1; min-width: 240px;">
+          <label>When (local time)</label>
+          <input id="ex_time" type="datetime-local" />
+          <label>From currency</label>
+          <input id="ex_from" value="IRR" />
+          <label>To currency</label>
+          <input id="ex_to" value="USD" />
+        </div>
+        <div style="flex:1; min-width: 240px;">
+          <label>Amount you sold/spent (from)</label>
+          <input id="ex_amt_from" inputmode="decimal" placeholder="e.g. 50000000" />
+          <label>Amount you received (to) — optional</label>
+          <input id="ex_amt_to" inputmode="decimal" placeholder="e.g. 1200" />
+          <label>Rate you got (optional)</label>
+          <input id="ex_rate" inputmode="decimal" placeholder="optional" />
+          <label>Notes</label>
+          <textarea id="ex_notes" rows="3" placeholder="where / channel / receipt id"></textarea>
+        </div>
+      </div>
+      <button onclick="addExchange()">Save exchange</button>
+      <div id="ex_err" class="err"></div>
+
+      <h3 style="margin-top: 18px;">History</h3>
+      <div id="tbl_wrap"></div>
+    </div>
+
+    <script>
+      function isoFromLocalInput(v) {
+        if (!v) return null;
+        const d = new Date(v);
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString();
+      }
+
+      function esc(s) {
+        return String(s ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;');
+      }
+
+      async function api(path, opts) {
+        const r = await fetch(path, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', ...(opts && opts.headers ? opts.headers : {}) },
+          ...(opts || {}),
+        });
+        const text = await r.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch (e) { data = { detail: text }; }
+        if (!r.ok) {
+          const d = data && data.detail;
+          let msg = 'HTTP ' + r.status;
+          if (Array.isArray(d)) msg = d.map(x => (x.msg || JSON.stringify(x))).join('\\n');
+          else if (d) msg = String(d);
+          throw new Error(msg);
+        }
+        return data;
+      }
+
+      async function refreshMe() {
+        document.getElementById('reg_err').textContent = '';
+        document.getElementById('in_err').textContent = '';
+        try {
+          const me = await api('/api/auth/me', { method: 'GET' });
+          document.getElementById('me').style.display = 'block';
+          document.getElementById('journal').style.display = 'block';
+          document.getElementById('me_email').textContent = me.email;
+          await refreshTable();
+        } catch (e) {
+          document.getElementById('me').style.display = 'none';
+          document.getElementById('journal').style.display = 'none';
+        }
+      }
+
+      async function register() {
+        document.getElementById('reg_err').textContent = '';
+        try {
+          await api('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({
+              email: document.getElementById('reg_email').value,
+              password: document.getElementById('reg_pw').value,
+            }),
+          });
+          await refreshMe();
+        } catch (e) {
+          document.getElementById('reg_err').textContent = String(e.message || e);
+        }
+      }
+
+      async function login() {
+        document.getElementById('in_err').textContent = '';
+        try {
+          await api('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({
+              email: document.getElementById('in_email').value,
+              password: document.getElementById('in_pw').value,
+            }),
+          });
+          await refreshMe();
+        } catch (e) {
+          document.getElementById('in_err').textContent = String(e.message || e);
+        }
+      }
+
+      async function logout() {
+        await api('/api/auth/logout', { method: 'POST', body: '{}' });
+        await refreshMe();
+      }
+
+      async function refreshTable() {
+        const data = await api('/api/journal/exchanges', { method: 'GET' });
+        const rows = data.exchanges || [];
+        if (!rows.length) {
+          document.getElementById('tbl_wrap').innerHTML = '<div class="muted">No entries yet.</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>When</th><th>Pair</th><th>From</th><th>To</th><th>Rate</th><th>Notes</th><th></th></tr></thead><tbody>';
+        for (const x of rows) {
+          html += '<tr>'
+            + '<td>' + x.occurred_at.replace('T',' ').replace('Z',' UTC') + '</td>'
+            + '<td>' + x.from_currency + ' → ' + x.to_currency + '</td>'
+            + '<td>' + x.amount_from + '</td>'
+            + '<td>' + (x.amount_to ?? '') + '</td>'
+            + '<td>' + (x.fx_rate ?? '') + '</td>'
+            + '<td>' + esc(x.notes) + '</td>'
+            + '<td><button class="secondary" onclick="del(' + x.id + ')">Delete</button></td>'
+            + '</tr>';
+        }
+        html += '</tbody></table>';
+        document.getElementById('tbl_wrap').innerHTML = html;
+      }
+
+      async function addExchange() {
+        document.getElementById('ex_err').textContent = '';
+        const t = isoFromLocalInput(document.getElementById('ex_time').value);
+        if (!t) {
+          document.getElementById('ex_err').textContent = 'Pick a date/time.';
+          return;
+        }
+        const payload = {
+          occurred_at: t,
+          from_currency: document.getElementById('ex_from').value,
+          to_currency: document.getElementById('ex_to').value,
+          amount_from: document.getElementById('ex_amt_from').value,
+          amount_to: document.getElementById('ex_amt_to').value || null,
+          fx_rate: document.getElementById('ex_rate').value || null,
+          notes: document.getElementById('ex_notes').value || null,
+        };
+        try {
+          await api('/api/journal/exchanges', { method: 'POST', body: JSON.stringify(payload) });
+          document.getElementById('ex_amt_from').value = '';
+          document.getElementById('ex_amt_to').value = '';
+          document.getElementById('ex_rate').value = '';
+          document.getElementById('ex_notes').value = '';
+          await refreshTable();
+        } catch (e) {
+          document.getElementById('ex_err').textContent = String(e.message || e);
+        }
+      }
+
+      async function del(id) {
+        if (!confirm('Delete this entry?')) return;
+        await api('/api/journal/exchanges/' + id, { method: 'DELETE' });
+        await refreshTable();
+      }
+
+      // default datetime-local to "now"
+      (function () {
+        const el = document.getElementById('ex_time');
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        el.value = d.toISOString().slice(0, 16);
+      })();
+
+      refreshMe();
+    </script>
+  </body>
+</html>

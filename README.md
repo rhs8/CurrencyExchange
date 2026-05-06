@@ -30,6 +30,17 @@ docker compose up -d --build
 docker compose run --rm -e ENABLE_LOOP=false ingest
 ```
 
+### Accounts + personal exchange log
+
+- Open **`/app`** in the API (local: `http://localhost:8000/app`).
+- Users can **register / sign in** (email + password). Sessions use an **httpOnly cookie** signed with **`JWT_SECRET`** (set in `docker-compose.yml` for dev; use a long random value in production and set `COOKIE_SECURE=true` behind HTTPS).
+
+If you already had a database volume from before auth existed, apply the new tables once:
+
+```bash
+docker compose exec -T db psql -U iranx -d iranx < db/init/002_users_journal.sql
+```
+
 ### Push to GitHub
 
 1. Create an empty repo on GitHub (no README/license if you want a clean first push).
