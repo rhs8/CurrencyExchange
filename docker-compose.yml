@@ -1,0 +1,53 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: iranx
+      POSTGRES_USER: iranx
+      POSTGRES_PASSWORD: iranx
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iranx -d iranx"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  adminer:
+    image: adminer:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  ingest:
+    build:
+      context: ./services/ingest
+    environment:
+      DATABASE_URL: postgresql://iranx:iranx@db:5432/iranx
+      ENABLE_LOOP: "true"
+      POLL_SECONDS: "60"
+      BONBAST_URL: "https://www.bonbast.com/"
+      CBI_URL: "https://www.cbi.ir/ExRates/rates_en.aspx"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ./services/api
+    environment:
+      DATABASE_URL: postgresql://iranx:iranx@db:5432/iranx
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+volumes:
+  db_data:
+
